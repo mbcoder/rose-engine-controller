@@ -1,3 +1,7 @@
+
+# Test module for moving rose engine steppers
+# git commit -am "commit message"
+
 import csv
 from RPi import GPIO
 import time
@@ -110,8 +114,8 @@ def calcDelay():
   if counter >=10 or counter <=-10:
     factor = abs(counter) - 10
     #print("factor:",factor)
-    if factor > 15:
-      factor = 15
+    if factor > 19:
+      factor = 19
 
     delay = 0.01 - (0.0005 * factor)
 
@@ -166,6 +170,8 @@ print('end of loop')
 #s2_moveStepper(50)
 #s2_moveStepper(-50)
 
+currentPosition = 0
+
 while True:
   calcDelay()
   if operating == True:
@@ -176,14 +182,23 @@ while True:
       if patternPosition >= 8000:
         patternPosition = 0
 
-     #s1_moveStepper(1)
+      s1_moveStepper(1)
     else:
       patternPosition = patternPosition -1
       if patternPosition <0:
         patternPosition = 7999
-      #s1_moveStepper(-1)
-  print("position: ", patternPosition, " offset ", offsets[patternPosition])
-  time.sleep(0.5)
+      s1_moveStepper(-1)
+
+  steps = offsets[patternPosition] - currentPosition
+
+  s2_moveStepper(steps)
+  
+  #print("position: ", patternPosition, " offset ", offsets[patternPosition], " steps ", steps)
+
+  currentPosition = offsets[patternPosition]
+  
+  
+  #time.sleep(0.5)
 
 
 exitFlag = True
