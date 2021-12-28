@@ -164,9 +164,9 @@ if __name__ == "__main__":
 
 # test steps
 delay = 0.001
-#s1_moveStepper(8000)
+#s1_moveStepper(-1000)
 #sleep(2)
-#s2_moveStepper(-50)
+s2_moveStepper(50)
 #s2_moveStepper(100)
 #s2_moveStepper(-50)
 
@@ -180,7 +180,7 @@ delay = 0.001
 
 currentPosition = 0
 
-if currentPosition == 0:
+if currentPosition == 1:
     while True:
       calcDelay()
       if operating == True:
