@@ -44,10 +44,12 @@ patternPosition = 0
 
 # setup rotary stepper
 GPIO.output(s1_enablePin, GPIO.HIGH)
-#GPIO.output(s1_directionPin, GPIO.LOW)
+GPIO.output(s1_directionPin, GPIO.LOW)
 
 # setup linear stepper
 GPIO.output(s2_enablePin, GPIO.HIGH)
+GPIO.output(s2_directionPin, GPIO.LOW)
+s2_lastDir = GPIO.LOW
 
 # pulse stepper by n pulses (ROTARY)
 def s1_moveStepper(pulses):
@@ -68,11 +70,20 @@ def s1_moveStepper(pulses):
 # pulse stepper by n pulses (LINEAR)
 def s2_moveStepper(pulses):
   global delay
+  global s2_lastDir
   
   if pulses > 0:
       GPIO.output(s2_directionPin, GPIO.HIGH)
+      if s2_lastDir == GPIO.LOW:
+          #print("Dir change to HI")
+          s2_lastDir = GPIO.HIGH 
+          time.sleep(0.05)
   if pulses < 0:
       GPIO.output(s2_directionPin, GPIO.LOW)
+      if s2_lastDir == GPIO.HIGH:
+          #print("Dir change to LOW")
+          s2_lastDir = GPIO.LOW
+          time.sleep(0.05)
   
   for x in range(abs(pulses)):
     GPIO.output(s2_pulsePin, GPIO.HIGH)
@@ -114,8 +125,8 @@ def calcDelay():
   if counter >=10 or counter <=-10:
     factor = abs(counter) - 10
     #print("factor:",factor)
-    if factor > 19:
-      factor = 19
+    if factor > 16:
+      factor = 16
 
     delay = 0.01 - (0.0005 * factor)
 
@@ -151,54 +162,52 @@ if __name__ == "__main__":
   handleThread.start()
 
 
-print('start of loop')
-
-#for offset in offsets:
-#    steps = offset - currentOffset  # type: int
-
-#    currentOffset = offset
-
-#    s1_moveStepper(1)
-#    s2_moveStepper(steps)
-
-    #print('steps {0} offset {1}'.format(steps, offset))
-
-print('end of loop')
-
 # test steps
+delay = 0.001
+#s1_moveStepper(8000)
+#sleep(2)
 #s2_moveStepper(-50)
-#s2_moveStepper(50)
+#s2_moveStepper(100)
 #s2_moveStepper(-50)
+
+#for n in range(11):
+    #print(n)
+    #s2_moveStepper(50)
+    #s2_moveStepper(50)
+    #s2_moveStepper(-50)
+    #s2_moveStepper(-50)
+
 
 currentPosition = 0
 
-while True:
-  calcDelay()
-  if operating == True:
-    #print(delay)
-    if forward == True:
-      patternPosition = patternPosition + 1
+if currentPosition == 0:
+    while True:
+      calcDelay()
+      if operating == True:
+        #print(delay)
+        if forward == True:
+          patternPosition = patternPosition + 1
 
-      if patternPosition >= 8000:
-        patternPosition = 0
+          if patternPosition >= 8000:
+            patternPosition = 0
 
-      s1_moveStepper(1)
-    else:
-      patternPosition = patternPosition -1
-      if patternPosition <0:
-        patternPosition = 7999
-      s1_moveStepper(-1)
+          s1_moveStepper(1)
+        else:
+          patternPosition = patternPosition -1
+          if patternPosition <0:
+            patternPosition = 7999
+          s1_moveStepper(-1)
 
-  steps = offsets[patternPosition] - currentPosition
+      steps = offsets[patternPosition] - currentPosition
 
-  s2_moveStepper(steps)
-  
-  #print("position: ", patternPosition, " offset ", offsets[patternPosition], " steps ", steps)
+      s2_moveStepper(steps)
+      
+      #print("position: ", patternPosition, " offset ", offsets[patternPosition], " steps ", steps)
 
-  currentPosition = offsets[patternPosition]
-  
-  
-  #time.sleep(0.5)
+      currentPosition = offsets[patternPosition]
+      
+      
+      #time.sleep(0.5)
 
 
 exitFlag = True
