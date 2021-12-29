@@ -102,7 +102,7 @@ resetLinearButton = PushButton(app, command=resetLinearScale, text="Reset", grid
 
 # Advance controls
 labelSdvanceMode = Text(app, size=16, text="Setup advance", align="left", width=20, grid=[1, 3])
-setupAdvanceMode = Combo(app, options=["Linear", "Rotary"], selected="Linear", grid=[1, 4],command=changeAdvanceMode)
+setupAdvanceMode = Combo(app, options=["Linear", "Rotary"], selected="Linear", grid=[1, 4], command=changeAdvanceMode)
 
 labelAdvanceLinear = Text(app, size=16, text="Linear advance:", grid=[2, 3])
 textAdvanceLinear = Text(app, size=16, text="2mm", grid=[3, 3])
@@ -113,3 +113,5 @@ advanceForwardButton = PushButton(app, command=advanceForward, text="Forward", g
 advanceBackwardButton = PushButton(app, command=advanceBackward, text="Back", grid=[1, 5])
 
 app.display()
+
+print("running here?")
