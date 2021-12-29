@@ -43,6 +43,9 @@ forward = True
 
 patternPosition = 0
 
+setupLinearPos = 0
+setupRotaryPos = 0
+
 # setup rotary stepper
 GPIO.output(s1_enablePin, GPIO.HIGH)
 GPIO.output(s1_directionPin, GPIO.LOW)
@@ -51,6 +54,28 @@ GPIO.output(s1_directionPin, GPIO.LOW)
 GPIO.output(s2_enablePin, GPIO.HIGH)
 GPIO.output(s2_directionPin, GPIO.LOW)
 s2_lastDir = GPIO.LOW
+
+class OpMode:
+    def __init__(self):
+        pass
+
+    STOPPED = 1
+    SETUP_POS = 2
+    SETUP_ADV = 3
+    ENGRAVING = 4
+
+
+class Motion:
+    def __init__(self):
+        pass
+
+    LINEAR = 1
+    ROTARY = 2
+
+
+currentMode = OpMode.STOPPED
+setupMode = Motion.LINEAR
+advanceMode = Motion.LINEAR
 
 # pulse stepper by n pulses (ROTARY)
 def s1_moveStepper(pulses):
@@ -92,9 +117,23 @@ def s2_moveStepper(pulses):
         GPIO.output(s2_pulsePin, GPIO.LOW)
         time.sleep(delay)
 
+def updateSetupDisplay():
+    global setupLinearPos
+    global setupRotaryPos
+    
+
+    textLinear.value = setupLinearPos
+    textRotary.value = setupRotaryPos 
+
+    
 def handleListener():
     global clkLastState
     global counter
+    global currentMode
+    global setupMode
+    global setupLinearPos
+    global setupRotaryPos
+    
     print("handle listener thread starting")
     try:
         while True:
@@ -102,9 +141,38 @@ def handleListener():
             dtState = GPIO.input(dt)
             if clkState != clkLastState:
                 if dtState != clkState:
+                    # positional setup mode?
+                    if currentMode == OpMode.SETUP_POS:
+                        if setupMode == Motion.LINEAR:
+                            # linear move
+                            s2_moveStepper(-2)
+                            setupLinearPos = setupLinearPos - 0.04
+                        else:
+                            # rotary move
+                            s1_moveStepper(1)
+                            
+                        updateSetupDisplay()
+   
+
+                    # advance linear setup
+
+                    # advance rotary setup
+
+                    # engraving
                     counter += 1
                 else:
-                    counter -= 1
+                    # positional setup mode?
+                    if currentMode == OpMode.SETUP_POS:
+                        if setupMode == Motion.LINEAR:
+                            # linear move
+                            s2_moveStepper(2)
+                            setupLinearPos = setupLinearPos + 0.04
+                        else:
+                            # rotary move
+                            s1_moveStepper(-1)
+                            
+                        updateSetupDisplay
+                counter -= 1
 
             #print(counter)
             clkLastState = clkState
@@ -144,28 +212,6 @@ def calcDelay():
     if counter <=-10:
         operating = True
         forward = False
-
-class OpMode:
-    def __init__(self):
-        pass
-
-    STOPPED = 1
-    SETUP_POS = 2
-    SETUP_ADV = 3
-    ENGRAVING = 4
-
-
-class Motion:
-    def __init__(self):
-        pass
-
-    LINEAR = 1
-    ROTARY = 2
-
-
-currentMode = OpMode.STOPPED
-setupMode = Motion.LINEAR
-advanceMode = Motion.LINEAR
 
 
 def changeOpMode(selected_value):
@@ -245,7 +291,7 @@ if __name__ == "__main__":
 delay = 0.001
 #s1_moveStepper(-1000)
 #sleep(2)
-s2_moveStepper(50)
+#s2_moveStepper(50)
 #s2_moveStepper(100)
 #s2_moveStepper(-50)
 
