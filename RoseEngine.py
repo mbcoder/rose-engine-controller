@@ -1,5 +1,6 @@
 
-# Test module for moving rose engine steppers
+# Controller for Rose Engine
+#
 # git commit -am "commit message"
 
 import csv
@@ -45,6 +46,8 @@ patternPosition = 0
 
 setupLinearPos = 0
 setupRotaryPos = 0
+setupLinearAdvance = 100
+setupRotaryAdvance = 100
 
 # setup rotary stepper
 GPIO.output(s1_enablePin, GPIO.HIGH)
@@ -117,13 +120,20 @@ def s2_moveStepper(pulses):
         GPIO.output(s2_pulsePin, GPIO.LOW)
         time.sleep(delay)
 
+
+# Updates the UI when setting up
 def updateSetupDisplay():
     global setupLinearPos
     global setupRotaryPos
+    global setupLinearAdvance
+    global setupRotaryAdvance
     
 
-    textLinear.value = setupLinearPos
-    textRotary.value = setupRotaryPos 
+    textLinear.value = round((setupLinearPos * 0.02), 2)
+    textRotary.value = setupRotaryPos
+
+    textAdvanceLinear.value = round((setupLinearAdvance * 0.02), 2)
+    textAdvanceRotary.value = setupRotaryAdvance 
 
     
 def handleListener():
@@ -133,6 +143,8 @@ def handleListener():
     global setupMode
     global setupLinearPos
     global setupRotaryPos
+    global setupLinearAdvance
+    global setupRotaryAdvance 
     
     print("handle listener thread starting")
     try:
@@ -146,39 +158,62 @@ def handleListener():
                         if setupMode == Motion.LINEAR:
                             # linear move
                             s2_moveStepper(-2)
-                            setupLinearPos = setupLinearPos - 0.04
+                            setupLinearPos = setupLinearPos - 1
                         else:
                             # rotary move
                             s1_moveStepper(1)
+                            setupRotaryPos = setupRotaryPos + 1
                             
                         updateSetupDisplay()
    
 
-                    # advance linear setup
+                    # advance setup?
+                    if currentMode == OpMode.SETUP_ADV:
+                        if advanceMode == Motion.LINEAR:
+                            # linear update
+                            setupLinearAdvance = setupLinearAdvance + 1
+                        else:
+                            # rotary update
+                            setupRotaryAdvance = setupRotaryAdvance + 1
+                        updateSetupDisplay()
 
-                    # advance rotary setup
-
-                    # engraving
-                    counter += 1
+                    # engraving ?
+                    if currentMode == OpMode.ENGRAVING:
+                        counter += 1
                 else:
                     # positional setup mode?
                     if currentMode == OpMode.SETUP_POS:
                         if setupMode == Motion.LINEAR:
                             # linear move
                             s2_moveStepper(2)
-                            setupLinearPos = setupLinearPos + 0.04
+                            setupLinearPos = setupLinearPos + 1
                         else:
                             # rotary move
                             s1_moveStepper(-1)
+                            setupRotaryPos = setupRotaryPos - 1
                             
-                        updateSetupDisplay
-                counter -= 1
+                        updateSetupDisplay()
+                        
+                    # advance setup?
+                    if currentMode == OpMode.SETUP_ADV:
+                        if advanceMode == Motion.LINEAR:
+                            # linear update
+                            setupLinearAdvance = setupLinearAdvance - 1
+                        else:
+                            # rotary update
+                            setupRotaryAdvance = setupRotaryAdvance - 1
+                        updateSetupDisplay()
+                        
+                    # engraving?
+                    if currentMode == OpMode.ENGRAVING:
+                        counter -= 1
 
-            #print(counter)
+
             clkLastState = clkState
             time.sleep(0.00005)
 
             if stopFlag == True:
+                print("stopping handle thread")
                 return
     finally:
         GPIO.cleanup()
@@ -252,22 +287,74 @@ def changeAdvanceMode(selected_value):
 
 
 def resetRotaryScale():
+    global setupRotaryPos 
+    setupRotaryPos = 0
+    updateSetupDisplay()
     print("resetting rotary")
 
 
 def resetLinearScale():
+    global setupLinearPos 
+    setupLinearPos = 0
+    updateSetupDisplay()
     print("resetting linear")
 
 
 def advanceForward():
     global currentMode
+    global operating
 
-    print("advance forward")
-    print("mode ", currentMode)
+    if operating == False:
+        print("advance forward")
 
 
 def advanceBackward():
-    print("advance backward")
+    if operating == False:
+        print("advance backward")
+
+def engraving():
+    global stopFlag
+    global currentMode
+    global operating
+    global forward
+    global patternPosition
+    global steps
+    global currentPosition
+    
+    try:
+        while True:
+            if currentMode == OpMode.ENGRAVING:
+            
+                calcDelay()
+        
+                if operating == True:
+                    #print(delay)
+                    if forward == True:
+                        patternPosition = patternPosition + 1
+
+                        if patternPosition >= 8000:
+                            patternPosition = 0
+
+                        s1_moveStepper(1)
+                    else:
+                        patternPosition = patternPosition -1
+                        if patternPosition <0:
+                            patternPosition = 7999
+                        s1_moveStepper(-1)
+
+                steps = offsets[patternPosition] - currentPosition
+
+                s2_moveStepper(steps)
+
+                currentPosition = offsets[patternPosition]
+            else:
+                time.sleep(1)
+
+
+        if stopFlag == True:
+                return
+    finally:
+        GPIO.cleanup()
 
 
 offsets = []
@@ -279,12 +366,19 @@ with open('Pattern1.csv') as csv_file:
 
 currentOffset = offsets[0]
 
+currentPosition = 0
+
 # start thread for handle listener
 if __name__ == "__main__":
     print("main thread")
 
     handleThread = threading.Thread(target=handleListener)
     handleThread.start()
+
+    engravingThread = threading.Thread(target=engraving)
+    engravingThread.start()
+
+
 
 
 # test steps
@@ -304,7 +398,7 @@ delay = 0.001
 
 
 # setup UI
-app = App(title="Rose Engine", width=700, height=300, layout="grid")
+app = App(title="Rose Engine", width=800, height=300, layout="grid")
 
 labelOpMode = Text(app, size=16, text="Operating Mode:", align="left", grid=[0, 0])
 operatingMode = Combo(app, options=["Stopped", "Setup position", "Setup advance", "Engraving"], selected="Stopped",
@@ -338,9 +432,6 @@ app.display()
 
 
 
-
-currentPosition = 0
-
 if currentPosition == 1:
     while True:
         calcDelay()
@@ -363,12 +454,7 @@ if currentPosition == 1:
 
         s2_moveStepper(steps)
 
-        #print("position: ", patternPosition, " offset ", offsets[patternPosition], " steps ", steps)
-
         currentPosition = offsets[patternPosition]
-
-
-        #time.sleep(0.5)
 
 
 exitFlag = True
